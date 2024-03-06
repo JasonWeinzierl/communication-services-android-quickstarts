@@ -148,6 +148,14 @@ public class MainActivity extends AppCompatActivity {
             teamsCallAgent.dispose();
             teamsCallAgent = null;
         }
+        if (preview != null) {
+            preview.dispose();
+            preview = null;
+        }
+        if (previewRenderer != null) {
+            previewRenderer.dispose();
+            previewRenderer = null;
+        }
         currentVideoStream = null;
         currentCamera = null;
         deviceManager = null;
@@ -185,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "Getting DeviceManager");
             deviceManager = callClient.getDeviceManager(context).get();
             currentCamera = getNextAvailableCamera(null);
+            currentVideoStream = new LocalVideoStream(currentCamera, this);
         }catch (Exception ex){
             Toast.makeText(context, "Failed to set device manager.", Toast.LENGTH_SHORT).show();
         }
@@ -260,7 +269,6 @@ public class MainActivity extends AppCompatActivity {
         EditText callIdView = findViewById(R.id.call_id);
         String callId = callIdView.getText().toString();
         ArrayList<CommunicationIdentifier> participants = new ArrayList<CommunicationIdentifier>();
-        List<VideoDeviceInfo> cameras = deviceManager.getCameras();
 
 
         if(oneToOneCall.isChecked()){
@@ -268,15 +276,13 @@ public class MainActivity extends AppCompatActivity {
             IncomingVideoOptions incomingVideoOptions = new IncomingVideoOptions();
             OutgoingVideoOptions outgoingVideoOptions = new OutgoingVideoOptions();
             OutgoingAudioOptions outgoingAudioOptions = new OutgoingAudioOptions();
-            if(!cameras.isEmpty()) {
-                currentCamera = getNextAvailableCamera(null);
-                currentVideoStream = new LocalVideoStream(currentCamera, context);
+            if(currentVideoStream != null) {
                 LocalVideoStream[] videoStreams = new LocalVideoStream[1];
                 videoStreams[0] = currentVideoStream;
                 incomingVideoOptions.setStreamType(VideoStreamType.REMOTE_INCOMING);
                 outgoingVideoOptions.setOutgoingVideoStreams(Arrays.asList(videoStreams[0]));
                 outgoingAudioOptions.setMuted(false);
-                showPreview(currentVideoStream);
+                showPreview();
             }
             participants.add(new CommunicationUserIdentifier(callId));
 
@@ -292,14 +298,12 @@ public class MainActivity extends AppCompatActivity {
         else{
 
             JoinCallOptions options = new JoinCallOptions();
-            if(!cameras.isEmpty()) {
-                currentCamera = getNextAvailableCamera(null);
-                currentVideoStream = new LocalVideoStream(currentCamera, context);
+            if(currentVideoStream != null) {
                 LocalVideoStream[] videoStreams = new LocalVideoStream[1];
                 videoStreams[0] = currentVideoStream;
                 VideoOptions videoOptions = new VideoOptions(videoStreams);
                 options.setVideoOptions(videoOptions);
-                showPreview(currentVideoStream);
+                showPreview();
             }
             GroupCallLocator groupCallLocator = new GroupCallLocator(UUID.fromString(callId));
 
@@ -330,22 +334,18 @@ public class MainActivity extends AppCompatActivity {
             participant = new MicrosoftTeamsUserIdentifier(callId).setCloudEnvironment(CommunicationCloudEnvironment.PUBLIC);
         }
 
-        List<VideoDeviceInfo> cameras = deviceManager.getCameras();
-
         if(oneToOneCall.isChecked()){
             StartTeamsCallOptions options = new StartTeamsCallOptions();
             IncomingVideoOptions incomingVideoOptions = new IncomingVideoOptions();
             OutgoingVideoOptions outgoingVideoOptions = new OutgoingVideoOptions();
             OutgoingAudioOptions outgoingAudioOptions = new OutgoingAudioOptions();
-            if(!cameras.isEmpty()) {
-                currentCamera = getNextAvailableCamera(null);
-                currentVideoStream = new LocalVideoStream(currentCamera, this);
+            if(currentVideoStream != null) {
                 LocalVideoStream[] videoStreams = new LocalVideoStream[1];
                 videoStreams[0] = currentVideoStream;
                 incomingVideoOptions.setStreamType(VideoStreamType.REMOTE_INCOMING);
                 outgoingVideoOptions.setOutgoingVideoStreams(Arrays.asList(videoStreams[0]));
                 outgoingAudioOptions.setMuted(false);
-                showPreview(currentVideoStream);
+                showPreview();
             }
 
             options.setIncomingVideoOptions(incomingVideoOptions);
@@ -396,12 +396,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void turnOnLocalVideo() {
         Log.d(TAG, "Getting cameras from device manager");
-        List<VideoDeviceInfo> cameras = deviceManager.getCameras();
-        if(!cameras.isEmpty()) {
+        if(currentVideoStream != null) {
             try {
                 Log.d(TAG, "Creating local video stream");
-                currentVideoStream = new LocalVideoStream(currentCamera, this);
-                showPreview(currentVideoStream);
+                showPreview();
                 if (isCte && teamsCall != null){
                     teamsCall.startVideo(this, currentVideoStream).get();
                 }else if (call != null) {
@@ -430,8 +428,8 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             switchSourceButton.setVisibility(View.INVISIBLE);
-            previewRenderer.dispose();
-            previewRenderer = null;
+            //previewRenderer.dispose();
+            //previewRenderer = null;
             if(isCte && teamsCall != null){
                 teamsCall.stopVideo(this, currentVideoStream).get();
             }else if (call != null) {
@@ -462,12 +460,16 @@ public class MainActivity extends AppCompatActivity {
         return cameras.get(newIndex);
     }
 
-    private void showPreview(LocalVideoStream stream) {
-        // Create renderer
-        previewRenderer = new VideoStreamRenderer(stream, this);
+    private void showPreview() {
+        if (previewRenderer == null) {
+            Log.d(TAG, "Creating renderer");
+            previewRenderer = new VideoStreamRenderer(currentVideoStream, this);
+            preview = previewRenderer.createView(new CreateViewOptions(ScalingMode.FIT));
+            preview.setTag(0);
+        } else {
+            Log.d(TAG, "Reusing existing renderer");
+        }
         LinearLayout layout = findViewById(R.id.localvideocontainer);
-        preview = previewRenderer.createView(new CreateViewOptions(ScalingMode.FIT));
-        preview.setTag(0);
         runOnUiThread(() -> {
             layout.addView(preview);
             switchSourceButton.setVisibility(View.VISIBLE);
@@ -529,15 +531,12 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         AcceptCallOptions acceptCallOptions = new AcceptCallOptions();
-        List<VideoDeviceInfo> cameras = deviceManager.getCameras();
-        if(!cameras.isEmpty()) {
-            currentCamera = getNextAvailableCamera(null);
-            currentVideoStream = new LocalVideoStream(currentCamera, context);
+        if(currentVideoStream != null) {
             LocalVideoStream[] videoStreams = new LocalVideoStream[1];
             videoStreams[0] = currentVideoStream;
             VideoOptions videoOptions = new VideoOptions(videoStreams);
             acceptCallOptions.setVideoOptions(videoOptions);
-            showPreview(currentVideoStream);
+            showPreview();
         }
         try {
             call = incomingCall.accept(context, acceptCallOptions).get();
@@ -559,15 +558,12 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         AcceptCallOptions acceptCallOptions = new AcceptCallOptions();
-        List<VideoDeviceInfo> cameras = deviceManager.getCameras();
-        if(!cameras.isEmpty()) {
-            currentCamera = getNextAvailableCamera(null);
-            currentVideoStream = new LocalVideoStream(currentCamera, context);
+        if(currentVideoStream != null) {
             LocalVideoStream[] videoStreams = new LocalVideoStream[1];
             videoStreams[0] = currentVideoStream;
             VideoOptions videoOptions = new VideoOptions(videoStreams);
             acceptCallOptions.setVideoOptions(videoOptions);
-            showPreview(currentVideoStream);
+            showPreview();
         }
         try {
             teamsCall = teamsIncomingCall.accept(context, acceptCallOptions).get();
