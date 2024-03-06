@@ -75,6 +75,7 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
+    private CallClient callClient = new CallClient();
     private CallAgent callAgent;
     private TeamsCallAgent teamsCallAgent;
     private VideoDeviceInfo currentCamera;
@@ -148,7 +149,6 @@ public class MainActivity extends AppCompatActivity {
     private void setDeviceManager(){
         Context context = this.getApplicationContext();
         try {
-            CallClient callClient = new CallClient();
             deviceManager = callClient.getDeviceManager(context).get();
         }catch (Exception ex){
             Toast.makeText(context, "Failed to set device manager.", Toast.LENGTH_SHORT).show();
@@ -160,7 +160,6 @@ public class MainActivity extends AppCompatActivity {
         String userToken = "<USER_ACCESS_TOKEN>";
         try {
             CommunicationTokenCredential credential = new CommunicationTokenCredential(userToken);
-            CallClient callClient = new CallClient();
             CallAgentOptions callAgentOptions = new CallAgentOptions();
             callAgent = callClient.createCallAgent(getApplicationContext(), credential, callAgentOptions).get();
         } catch (Exception ex) {
@@ -173,7 +172,6 @@ public class MainActivity extends AppCompatActivity {
         String userToken = "<USER_ACCESS_TOKEN>";
         try {
             CommunicationTokenCredential credential = new CommunicationTokenCredential(userToken);
-            CallClient callClient = new CallClient();
             TeamsCallAgentOptions teamsCallAgentOptions = new TeamsCallAgentOptions();
             teamsCallAgent = callClient.createTeamsCallAgent(getApplicationContext(), credential, teamsCallAgentOptions).get();
         } catch (Exception ex) {
