@@ -74,6 +74,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+    private final String TAG = "MainActivity";
 
     private CallClient callClient = new CallClient();
     private CallAgent callAgent;
@@ -103,9 +104,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        Button restartSdkButton = findViewById(R.id.restart_sdk);
+        restartSdkButton.setOnClickListener(l -> restartSdk());
+
         getAllPermissions();
-        setupAgent();
-        setDeviceManager();
+        startSdk();
 
         switchSourceButton = findViewById(R.id.switch_source);
         switchSourceButton.setOnClickListener(l -> switchSource());
@@ -133,6 +136,36 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void restartSdk() {
+        Log.d(TAG, "Restarting ACS SDK");
+        if (callAgent != null) {
+            Log.d(TAG, "Disposing CallAgent");
+            callAgent.dispose();
+            callAgent = null;
+        }
+        if (teamsCallAgent != null) {
+            Log.d(TAG, "Disposing TeamsCallAgent");
+            teamsCallAgent.dispose();
+            teamsCallAgent = null;
+        }
+        currentVideoStream = null;
+        currentCamera = null;
+        deviceManager = null;
+        Log.d(TAG, "Disposing CallClient");
+        callClient.dispose();
+        Log.d(TAG, "Creating new CallClient");
+        callClient = new CallClient();
+
+        startSdk();
+    }
+
+    private void startSdk() {
+        Log.d(TAG, "Starting ACS SDK");
+        setupAgent();
+        setDeviceManager();
+        Log.d(TAG, "Finished starting ACS SDK");
+    }
+
     private void getAllPermissions() {
         String[] requiredPermissions = new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_PHONE_STATE};
         ArrayList<String> permissionsToAskFor = new ArrayList<>();
@@ -149,7 +182,9 @@ public class MainActivity extends AppCompatActivity {
     private void setDeviceManager(){
         Context context = this.getApplicationContext();
         try {
+            Log.d(TAG, "Getting DeviceManager");
             deviceManager = callClient.getDeviceManager(context).get();
+            currentCamera = getNextAvailableCamera(null);
         }catch (Exception ex){
             Toast.makeText(context, "Failed to set device manager.", Toast.LENGTH_SHORT).show();
         }
@@ -161,6 +196,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             CommunicationTokenCredential credential = new CommunicationTokenCredential(userToken);
             CallAgentOptions callAgentOptions = new CallAgentOptions();
+            Log.d(TAG, "Creating CallAgent");
             callAgent = callClient.createCallAgent(getApplicationContext(), credential, callAgentOptions).get();
         } catch (Exception ex) {
             Toast.makeText(context, "Failed to create call agent.", Toast.LENGTH_SHORT).show();
@@ -173,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             CommunicationTokenCredential credential = new CommunicationTokenCredential(userToken);
             TeamsCallAgentOptions teamsCallAgentOptions = new TeamsCallAgentOptions();
+            Log.d(TAG, "Creating TeamsCallAgent");
             teamsCallAgent = callClient.createTeamsCallAgent(getApplicationContext(), credential, teamsCallAgentOptions).get();
         } catch (Exception ex) {
             Toast.makeText(context, "Failed to create teams call agent.", Toast.LENGTH_SHORT).show();
@@ -358,9 +395,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void turnOnLocalVideo() {
+        Log.d(TAG, "Getting cameras from device manager");
         List<VideoDeviceInfo> cameras = deviceManager.getCameras();
         if(!cameras.isEmpty()) {
             try {
+                Log.d(TAG, "Creating local video stream");
                 currentVideoStream = new LocalVideoStream(currentCamera, this);
                 showPreview(currentVideoStream);
                 if (isCte && teamsCall != null){
@@ -369,15 +408,19 @@ public class MainActivity extends AppCompatActivity {
                     call.startVideo(this, currentVideoStream).get();
                 }
                 switchSourceButton.setVisibility(View.VISIBLE);
+                Log.d(TAG, "Finished turning on local video");
             } catch (CallingCommunicationException acsException) {
                 acsException.printStackTrace();
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
             }
+        } else {
+            Log.d(TAG, "No cameras are available");
         }
     }
 
     public void turnOffLocalVideo() {
+        Log.d(TAG, "Turning off local video");
         try {
             LinearLayout container = findViewById(R.id.localvideocontainer);
             for (int i = 0; i < container.getChildCount(); ++i) {
@@ -402,6 +445,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private VideoDeviceInfo getNextAvailableCamera(VideoDeviceInfo camera) {
+        Log.d(TAG, "Getting cameras from DeviceManager");
         List<VideoDeviceInfo> cameras = deviceManager.getCameras();
         int currentIndex = 0;
         if (camera == null) {
