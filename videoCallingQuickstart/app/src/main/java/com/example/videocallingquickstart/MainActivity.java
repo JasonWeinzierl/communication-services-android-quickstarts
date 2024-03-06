@@ -363,9 +363,9 @@ public class MainActivity extends AppCompatActivity {
             try {
                 currentVideoStream = new LocalVideoStream(currentCamera, this);
                 showPreview(currentVideoStream);
-                if (isCte){
+                if (isCte && teamsCall != null){
                     teamsCall.startVideo(this, currentVideoStream).get();
-                }else {
+                }else if (call != null) {
                     call.startVideo(this, currentVideoStream).get();
                 }
                 switchSourceButton.setVisibility(View.VISIBLE);
@@ -389,9 +389,9 @@ public class MainActivity extends AppCompatActivity {
             switchSourceButton.setVisibility(View.INVISIBLE);
             previewRenderer.dispose();
             previewRenderer = null;
-            if(isCte){
+            if(isCte && teamsCall != null){
                 teamsCall.stopVideo(this, currentVideoStream).get();
-            }else {
+            }else if (call != null) {
                 call.stopVideo(this, currentVideoStream).get();
             }
         } catch (CallingCommunicationException acsException) {
