@@ -203,6 +203,12 @@ public class MainActivity extends AppCompatActivity {
             this.incomingCall = incomingCall;
             Executors.newCachedThreadPool().submit(this::answerIncomingCall);
         });
+        callAgent.addOnCallsUpdatedListener((x) -> {
+            if (x.getRemovedCalls().size() > 0) {
+                call = null;
+                teamsCall = null;
+            }
+        });
     }
 
     private void handleTeamsIncomingCall() {
