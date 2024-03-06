@@ -17,6 +17,8 @@ import android.widget.RadioButton;
 import android.widget.Toast;
 import android.widget.LinearLayout;
 import android.content.Context;
+
+import com.azure.android.communication.calling.CallAgentOptions;
 import com.azure.android.communication.calling.CallState;
 import com.azure.android.communication.calling.CallingCommunicationException;
 import com.azure.android.communication.calling.GroupCallLocator;
@@ -159,7 +161,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             CommunicationTokenCredential credential = new CommunicationTokenCredential(userToken);
             CallClient callClient = new CallClient();
-            callAgent = callClient.createCallAgent(getApplicationContext(), credential).get();
+            CallAgentOptions callAgentOptions = new CallAgentOptions();
+            callAgent = callClient.createCallAgent(getApplicationContext(), credential, callAgentOptions).get();
         } catch (Exception ex) {
             Toast.makeText(context, "Failed to create call agent.", Toast.LENGTH_SHORT).show();
         }
